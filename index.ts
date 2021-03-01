@@ -1,18 +1,15 @@
 import { Client, Message, TextChannel } from "discord.js";
 import { readFileSync, writeFileSync } from "fs";
-import moment = require("moment");
-import { Rcon } from "rcon-client/lib";
 const Query: any = require("mcquery");
+import { Rcon } from "rcon-client/lib";
 const client = new Client();
 
 const config = JSON.parse(readFileSync("./config.json", "utf-8"));
 const rcon = JSON.parse(readFileSync("./rcon.json", "utf-8"));
-const time = JSON.parse(readFileSync("./time.json", "utf-8"));
 
 const hostname = config.hostname;
 const port = config.port;
 
-const activeUserSessions: Array<userSessionInfo> = [];
 const whitelistQueue: Array<whitelistRequest> = [];
 let errors = 0;
 
@@ -27,23 +24,6 @@ const whitelistUser = (username: string) => {
         await session.end();
         res(true);
     });
-};
-
-const saveAllUserTimes = () => {
-    const now = moment.now();
-    activeUserSessions.forEach(session => {
-        saveUserTime(session.username, moment.duration(moment(session.joined).diff(now)));
-    });
-    activeUserSessions.splice(0, activeUserSessions.length);
-};
-
-const saveUserTime = (username: string, duration: moment.Duration) => {
-    if (time[username]) {
-        time[username] += duration;
-    } else {
-        time[username] = duration;
-    }
-    writeFileSync("./time.json", JSON.stringify(time, null, 4));
 };
 
 client.on("ready", async () => {
@@ -64,25 +44,11 @@ client.on("ready", async () => {
         });
     };
 
-    const fullStatHandler = (err: String, stat: queryFullStat) => {
+    const fullStatHandler = (err: String, stat) => {
         if (err) {
             queryErrorHandler(err);
         } else {
             errors = 0;
-            const now = moment.now();
-            activeUserSessions.forEach(session => {
-                const found = stat.player_.find(player => player == session.username);
-                if (!found) {
-                    const duration = moment.duration(moment(session.joined).diff(now));
-                    saveUserTime(session.username, duration);
-                }
-            });
-            stat.player_.forEach(player => {
-                const found = activeUserSessions.find(session => session.username == player);
-                if (!found) {
-                    activeUserSessions.push({ username: player, joined: now });
-                }
-            });
             const embed = {
                 title: "[Belastend] Minecraft-Server",
                 description: "🟢 Server ist aktuell online!",
@@ -91,11 +57,7 @@ client.on("ready", async () => {
                 fields: [
                     {
                         name: "Aktuelle Spieler (" + stat.numplayers + ")",
-                        value: parseInt(stat.numplayers) == 0 ?
-                            "Aktuell ist niemand auf dem Server!" :
-                            stat.player_.map(player => {
-                                return player + " (" + moment.duration(moment(now).diff(activeUserSessions.find(session => session.username == player).joined)).locale("de").humanize() + ")";
-                            }).join("\n")
+                        value: stat.numplayers == 0 ? "Aktuell ist niemand auf dem Server!" : stat.player_.join("\n")
                     }
                 ]
             };
@@ -107,7 +69,6 @@ client.on("ready", async () => {
         errors++;
         console.error("ERROR: TRY " + errors + "\n" + err);
         if (errors == 3) {
-            saveAllUserTimes();
             const embed = {
                 title: "[Belastend] Minecraft-Server",
                 description: "🔴 Server ist aktuell offline!\nDer Server konnte aktuell nicht erreicht werden, Status unbekannt.\n<@155626429629857792> bitte nicht pingen, der wurde schon von mir gepingt :)",
@@ -143,7 +104,7 @@ client.on("ready", async () => {
 client.on("message", async (message) => {
     if (!message.author.bot) {
         if (message.channel.id == config.whitelist) {
-            if (message.content.startsWith(".whitelist ")) {
+            if (message.content.startsWith("?whitelist ")) {
                 const username = message.content.substr(11).trim();
                 message.delete();
                 if (username) {
@@ -186,11 +147,6 @@ client.on("message", async (message) => {
             if (message.content.toLowerCase() == "ente") {
                 if (Math.random() < 0.05) {
                     message.reply("Gans!");
-                }
-            } else {
-                if (message.content.toLowerCase().startsWith(".stats")) {
-                    const username = message.content.substr(6).trim();
-                    if (username) { }
                 }
             }
         }
