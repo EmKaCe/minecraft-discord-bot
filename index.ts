@@ -50,7 +50,7 @@ client.on("ready", async () => {
         } else {
             errors = 0;
             const embed = {
-                title: "[Belastend] Minecraft-Server",
+                title: "Server-Status",
                 description: "🟢 Server ist aktuell online!",
                 color: 3460101,
                 timestamp: Date.now(),
@@ -70,7 +70,7 @@ client.on("ready", async () => {
         console.error("ERROR: TRY " + errors + "\n" + err);
         if (errors == 3) {
             const embed = {
-                title: "[Belastend] Minecraft-Server",
+                title: "Server-Status",
                 description: "🔴 Server ist aktuell offline!\nDer Server konnte aktuell nicht erreicht werden, Status unbekannt.\n<@155626429629857792> bitte nicht pingen, der wurde schon von mir gepingt :)",
                 color: 13632027,
                 timestamp: Date.now()
